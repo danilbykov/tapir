@@ -14,6 +14,7 @@ import sttp.tapir.server.vertx.VertxCatsServerOptions
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
+import cats.effect.concurrent.Deferred
 
 class Fs2StreamTest extends AnyFlatSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(scala.concurrent.ExecutionContext.global)
@@ -68,11 +69,14 @@ class Fs2StreamTest extends AnyFlatSpec with Matchers {
       .unfoldChunkEval(0)({ num =>
         IO.delay(100.millis).as(((intAsBuffer(num), num + 1)).some)
       })
-      .interruptAfter(4.seconds)
+      // .interruptAfter(3.seconds)
+
+    // stream.interruptWhen
 
     (for {
       ref <- Ref.of[IO, List[Int]](Nil)
-      readStream = fs2.fs2ReadStreamCompatible[IO].asReadStream(stream)
+      dfd <- Deferred[IO, Either[Throwable, Unit]]
+      readStream = fs2.fs2ReadStreamCompatible[IO].asReadStream(stream.interruptWhen(dfd))
       completed <- Ref[IO].of(false)
       _ <- IO.delay {
         readStream.handler { buffer =>
@@ -92,6 +96,7 @@ class Fs2StreamTest extends AnyFlatSpec with Matchers {
       _ <- IO.delay(readStream.resume())
       snapshot3 <- eventually(ref.get)({ case list => list.length should be > snapshot2.length })
       _ = shouldIncreaseMonotonously(snapshot3)
+      _ <- dfd.complete(Right(()))
       _ <- eventually(completed.get)({ case true => () })
     } yield ()).unsafeRunSync()
   }
