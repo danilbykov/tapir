@@ -66,7 +66,7 @@ class Fs2StreamTest extends AnyFlatSpec with Matchers {
   "Fs2ReadStreamCompatible" should "convert fs2 stream to read stream" in {
     val stream = Stream
       .unfoldChunkEval(0)({ num =>
-        IO.delay(100.millis).as(((intAsBuffer(num), num + 1)).some)
+        IO.sleep(100.millis).as(((intAsBuffer(num), num + 1)).some)
       })
 
     (for {
@@ -93,10 +93,12 @@ class Fs2StreamTest extends AnyFlatSpec with Matchers {
       snapshot3 <- eventually(ref.get)({ case list => list.length should be > snapshot2.length })
       _ = shouldIncreaseMonotonously(snapshot3)
       _ <- dfd.complete(Right(()))
+      _ = println("send complete" * 10)
       _ <- eventually(completed.get)({ case true => () })
     } yield ()).unsafeRunSync()
   }
 
+  /*
   it should "interrupt read stream after zio stream interruption" in {
     val stream = Stream.unfoldChunkEval(0)({ num =>
       if (num > 20) {
@@ -219,4 +221,5 @@ class Fs2StreamTest extends AnyFlatSpec with Matchers {
       result.isLeft shouldBe true
     }).unsafeRunSync()
   }
+  */
 }

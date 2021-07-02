@@ -58,14 +58,18 @@ object fs2 {
             })
             .onFinalizeCase({
               case ExitCase.Completed =>
+                println("completed!!!" * 10)
                 state.get.flatMap { state =>
                   F.delay(state.endHandler.handle(null))
                 }
               case ExitCase.Canceled =>
+                println("canceled!!!" * 10)
+                (new Throwable()).printStackTrace()
                 state.get.flatMap { state =>
                   F.delay(state.errorHandler.handle(new Exception("Cancelled!")))
                 }
               case ExitCase.Error(cause) =>
+                println("error!!! * 10")
                 state.get.flatMap { state =>
                   F.delay(state.errorHandler.handle(cause))
                 }
